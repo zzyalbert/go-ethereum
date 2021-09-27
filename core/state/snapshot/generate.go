@@ -664,13 +664,20 @@ func (dl *diskLayer) generate(stats *generatorStats) {
 					snapStorageWriteCounter.Inc(time.Since(start).Nanoseconds())
 				}(time.Now())
 
+				cacheKey := append(accountHash[:], key...)
 				if delete {
 					rawdb.DeleteStorageSnapshot(batch, accountHash, common.BytesToHash(key))
+					if dl.cache.Has(cacheKey) {
+						dl.cache.Del(cacheKey)
+					}
 					snapWipedStorageMeter.Mark(1)
 					return nil
 				}
 				if write {
 					rawdb.WriteStorageSnapshot(batch, accountHash, common.BytesToHash(key), val)
+					if dl.cache.Has(cacheKey) {
+						dl.cache.Set(cacheKey, val)
+					}
 					snapGeneratedStorageMeter.Mark(1)
 				} else {
 					snapRecoveredStorageMeter.Mark(1)
